@@ -1,0 +1,9 @@
+TypeScript
+React
+Next.js
+Tailwind
+Supabase
+PostgreSQL
+GraphqQL
+Apollo
+NextAuth

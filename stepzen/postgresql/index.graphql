@@ -1,0 +1,191 @@
+type comment {
+    username: String
+    text: String
+    post_id: ID
+    id: ID!
+    created_at: DateTime
+}
+
+type post {
+    username: String
+    title: String
+    subreddit_id: ID
+    image: String
+    id: ID!
+    created_at: DateTime
+    body: String
+    comments: [comment] @materializer(query: "commentListById", arguments: [{ name: "post_id", field: "id" }])
+    votes: [vote] @materializer(query: "voteListById", arguments: [{ name: "post_id", field: "id" }])
+    subreddit: [subreddit] @materializer(query: "subredditListById", arguments: [{ name: "id", field: "subreddit_id" }])
+}
+
+type subreddit {
+    topic: String
+    id: ID!
+    created_at: DateTime
+}
+
+type vote {
+    username: String
+    upvote: Boolean
+    post_id: ID
+    id: ID!
+    created_at: DateTime
+}
+
+type Query {
+    commentList: [comment] @dbquery(type: "postgresql", schema: "public", table: "comment", configuration: "postgresql_config")
+
+    commentListById(post_id: ID!): [comment]
+        @dbquery(
+            type: "postgresql"
+            schema: "public"
+            query: """
+            SELECT * FROM "comment" WHERE "post_id" = $1
+            """
+            configuration: "postgresql_config"
+        )
+
+    commentPaginatedList(first: Int, after: Int): [comment]
+        @dbquery(
+            type: "postgresql"
+            schema: "public"
+            query: """
+            SELECT "created_at", "id", "post_id", "text", "username" FROM "comment" LIMIT $1 OFFSET $2
+            """
+            configuration: "postgresql_config"
+        )
+
+    postBySubreddit_id(subreddit_id: ID!): [post] @dbquery(type: "postgresql", schema: "public", table: "post", configuration: "postgresql_config")
+
+    postBySubreddit_idAndBody(subreddit_id: ID!, body: String!): [post] @dbquery(type: "postgresql", schema: "public", table: "post", configuration: "postgresql_config")
+
+    postList: [post]
+        @dbquery(
+            type: "postgresql"
+            schema: "public"
+            query: """
+            SELECT * FROM "post"
+            ORDER BY "post"."created_at" DESC
+            """
+            configuration: "postgresql_config"
+        )
+
+    postListByPostId(post_id: ID!): post
+        @dbquery(
+            type: "postgresql"
+            schema: "public"
+            query: """
+            SELECT * FROM "post"
+            WHERE "post"."id" = $1
+            """
+            configuration: "postgresql_config"
+        )
+
+    postListByTopic(topic: String!): [post]
+        @dbquery(
+            type: "postgresql"
+            schema: "public"
+            query: """
+            SELECT *, "post".id AS id FROM "post"
+            JOIN "subreddit" ON "subreddit"."id" = "post"."subreddit_id"
+            WHERE "subreddit"."topic" = $1
+            ORDER BY "post"."created_at" DESC
+            """
+            configuration: "postgresql_config"
+        )
+
+    postPaginatedList(first: Int, after: Int): [post]
+        @dbquery(
+            type: "postgresql"
+            schema: "public"
+            query: """
+            SELECT "body", "created_at", "id", "image", "subreddit_id", "title", "username" FROM "post" LIMIT $1 OFFSET $2
+            """
+            configuration: "postgresql_config"
+        )
+
+    subredditList: [subreddit] @dbquery(type: "postgresql", schema: "public", table: "subreddit", configuration: "postgresql_config")
+
+    subredditListLimit(limit: Int!): [subreddit]
+        @dbquery(
+            type: "postgresql"
+            schema: "public"
+            query: """
+            SELECT * FROM "subreddit"
+            ORDER BY "created_at" DESC
+            LIMIT $1
+            """
+            configuration: "postgresql_config"
+        )
+
+    subredditListByTopic(topic: String!): [subreddit]
+        @dbquery(
+            type: "postgresql"
+            schema: "public"
+            query: """
+            SELECT * FROM "subreddit" WHERE "topic" = $1
+            """
+            configuration: "postgresql_config"
+        )
+
+    subredditListById(id: ID!): [subreddit]
+        @dbquery(
+            type: "postgresql"
+            schema: "public"
+            query: """
+            SELECT * FROM "subreddit" WHERE "id" = $1
+            """
+            configuration: "postgresql_config"
+        )
+
+    subredditPaginatedList(first: Int, after: Int): [subreddit]
+        @dbquery(
+            type: "postgresql"
+            schema: "public"
+            query: """
+            SELECT "created_at", "id", "topic" FROM "subreddit" LIMIT $1 OFFSET $2
+            """
+            configuration: "postgresql_config"
+        )
+
+    voteList: [vote] @dbquery(type: "postgresql", schema: "public", table: "vote", configuration: "postgresql_config")
+
+    voteListById(post_id: ID!): [vote]
+        @dbquery(
+            type: "postgresql"
+            schema: "public"
+            query: """
+            SELECT * FROM "vote" WHERE "post_id" = $1 order by "created_at" desc
+            """
+            configuration: "postgresql_config"
+        )
+
+    votePaginatedList(first: Int, after: Int): [vote]
+        @dbquery(
+            type: "postgresql"
+            schema: "public"
+            query: """
+            SELECT "created_at", "id", "post_id", "upvote", "username" FROM "vote" LIMIT $1 OFFSET $2
+            """
+            configuration: "postgresql_config"
+        )
+}
+
+type Mutation {
+    deleteComment(username: String!, post_id: ID!, text: String!, id: ID!): comment @dbquery(type: "postgresql", schema: "public", table: "comment", dml: DELETE, configuration: "postgresql_config")
+
+    insertComment(username: String, post_id: ID, text: String): comment @dbquery(type: "postgresql", schema: "public", table: "comment", dml: INSERT, configuration: "postgresql_config")
+
+    deletePost(body: String!, subreddit_id: ID!, id: ID!, title: String!, username: String!, image: String!): post @dbquery(type: "postgresql", schema: "public", table: "post", dml: DELETE, configuration: "postgresql_config")
+
+    insertPost(body: String, subreddit_id: ID, title: String, username: String, image: String): post @dbquery(type: "postgresql", schema: "public", table: "post", dml: INSERT, configuration: "postgresql_config")
+
+    deleteSubreddit(topic: String!, id: ID!): subreddit @dbquery(type: "postgresql", schema: "public", table: "subreddit", dml: DELETE, configuration: "postgresql_config")
+
+    insertSubreddit(topic: String!): subreddit @dbquery(type: "postgresql", schema: "public", table: "subreddit", dml: INSERT, configuration: "postgresql_config")
+
+    deleteVote(username: String!, post_id: ID!, id: ID!, upvote: Boolean!): vote @dbquery(type: "postgresql", schema: "public", table: "vote", dml: DELETE, configuration: "postgresql_config")
+
+    insertVote(username: String, post_id: ID, upvote: Boolean): vote @dbquery(type: "postgresql", schema: "public", table: "vote", dml: INSERT, configuration: "postgresql_config")
+}
